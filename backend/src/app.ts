@@ -36,11 +36,26 @@ app.use('/api', routes);
 // Error handler
 app.use(errorHandler);
 
-// Start server
+// Connect to MongoDB (for serverless, connection is cached)
+let isConnected = false;
+
+const connectOnce = async () => {
+    if (!isConnected) {
+        await connectDB();
+        isConnected = true;
+    }
+};
+
+// For serverless: connect on each request
+app.use(async (_req, _res, next) => {
+    await connectOnce();
+    next();
+});
+
+// Start server (only in development/local)
 const startServer = async () => {
     try {
-        // Connect to MongoDB
-        await connectDB();
+        await connectOnce();
 
         const PORT = parseInt(env.PORT);
         app.listen(PORT, () => {
@@ -62,7 +77,10 @@ const startServer = async () => {
     }
 };
 
-// Export startServer for external use (e.g. server.ts)
-export { startServer };
+// Only start server if not in serverless environment
+if (process.env.VERCEL !== '1') {
+    startServer();
+}
 
+// Export for Vercel serverless
 export default app;
