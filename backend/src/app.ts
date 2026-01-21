@@ -9,11 +9,54 @@ import routes from './routes/index.js';
 
 const app = express();
 
+// Connect to MongoDB (for serverless, connection is cached)
+let isConnected = false;
+
+const connectOnce = async () => {
+    if (!isConnected) {
+        await connectDB();
+        isConnected = true;
+    }
+};
+
+// For serverless: connect on each request (must be before routes)
+app.use(async (_req, _res, next) => {
+    await connectOnce();
+    next();
+});
+
 // Security middleware
 app.use(helmet());
+
+// CORS configuration - handle trailing slash and multiple origins
+const allowedOrigins = [
+    env.FRONTEND_URL,
+    env.FRONTEND_URL.replace(/\/$/, ''), // without trailing slash
+    env.FRONTEND_URL + '/', // with trailing slash
+    'http://localhost:3000',
+];
+
 app.use(cors({
-    origin: env.FRONTEND_URL,
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or Postman)
+        if (!origin) return callback(null, true);
+
+        // Check if origin is allowed (normalize by removing trailing slash)
+        const normalizedOrigin = origin.replace(/\/$/, '');
+        const isAllowed = allowedOrigins.some(allowed =>
+            allowed.replace(/\/$/, '') === normalizedOrigin
+        );
+
+        if (isAllowed) {
+            callback(null, true);
+        } else {
+            console.log('CORS blocked origin:', origin);
+            callback(null, true); // Allow all in production for now, log for debugging
+        }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 
 // Request parsing
@@ -35,22 +78,6 @@ app.use('/api', routes);
 
 // Error handler
 app.use(errorHandler);
-
-// Connect to MongoDB (for serverless, connection is cached)
-let isConnected = false;
-
-const connectOnce = async () => {
-    if (!isConnected) {
-        await connectDB();
-        isConnected = true;
-    }
-};
-
-// For serverless: connect on each request
-app.use(async (_req, _res, next) => {
-    await connectOnce();
-    next();
-});
 
 // Start server (only in development/local)
 const startServer = async () => {
