@@ -70,13 +70,19 @@ export default function DashboardPage() {
         return null;
     }
 
-    // Group challenges by category
-    const groupedChallenges = progress.reduce((acc, p) => {
-        const category = p.challengeId?.category || 'UNKNOWN';
-        if (!acc[category]) acc[category] = [];
-        acc[category].push(p);
-        return acc;
-    }, {} as Record<string, ChallengeProgress[]>);
+    // Group challenges by category and sort by level
+    const groupedChallenges = progress
+        .sort((a, b) => {
+            const levelA = a.challengeId?.requiredLevel || 0;
+            const levelB = b.challengeId?.requiredLevel || 0;
+            return levelA - levelB;
+        })
+        .reduce((acc, p) => {
+            const category = p.challengeId?.category || 'UNKNOWN';
+            if (!acc[category]) acc[category] = [];
+            acc[category].push(p);
+            return acc;
+        }, {} as Record<string, ChallengeProgress[]>);
 
     const categoryNames: Record<string, string> = {
         SYNTAX: 'Syntax Valley',
