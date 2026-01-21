@@ -70,16 +70,16 @@ export default function DashboardPage() {
         return null;
     }
 
-    // Group challenges by category and sort by level then title
+    // Group challenges by category and sort by level then title (natural sort)
     const groupedChallenges = progress
         .sort((a, b) => {
             const levelA = a.challengeId?.requiredLevel || 0;
             const levelB = b.challengeId?.requiredLevel || 0;
             if (levelA !== levelB) return levelA - levelB;
-            // Secondary sort by title (alphabetically, which will sort "Protocol 1" before "Protocol 2")
+            // Natural sort by title (treats numbers numerically: 1, 2, 10 instead of 1, 10, 2)
             const titleA = a.challengeId?.title || '';
             const titleB = b.challengeId?.title || '';
-            return titleA.localeCompare(titleB);
+            return titleA.localeCompare(titleB, undefined, { numeric: true, sensitivity: 'base' });
         })
         .reduce((acc, p) => {
             const category = p.challengeId?.category || 'UNKNOWN';
